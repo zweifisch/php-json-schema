@@ -1,0 +1,21 @@
+{
+    "name": "zweifisch/benchmark",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Feng Zhou",
+            "email": "zf.pascal@gmail.com"
+        }
+    ],
+    "require": {
+
+    },
+    "autoload": {
+        "psr-0": {
+            "jsonschema": "."
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "*"
+    }
+}

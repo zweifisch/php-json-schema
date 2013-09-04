@@ -1,0 +1,22 @@
+{
+	"title": "creating a post",
+	"type": "object",
+	"properties": {
+		"title": {
+			"type": "string"
+		},
+		"content": {
+			"type": "string"
+		},
+		"cat": {
+			"type": "string"
+		},
+		"tags": {
+			"type": "array"
+		},
+		"comments" : {
+			"type": "array"
+		}
+	},
+	"required": ["title", "content"]
+}
