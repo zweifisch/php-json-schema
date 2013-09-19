@@ -5,26 +5,37 @@ use \jsonschema\Validator;
 class ArrayTest extends PHPUnit_Framework_TestCase
 {
 
-	public function testMin()
+	public function testType()
+	{
+		$schema = (object)[
+			'type'=> 'array',
+		];
+			
+		$this->assertSame([], $this->validator->validate([], $schema));
+		$this->assertSame([['type','array',null]], $this->validator->validate(null, $schema));
+		$this->assertSame([['type','array',null]], $this->validator->validate(new stdClass, $schema));
+	}
+
+	public function testMinItems()
 	{
 		$schema = (object)[
 			'type'=> 'array',
 			'minItems'=> 2,
 		];
-		$input = [1];
 
+		$input = [1];
 		$this->assertSame([['minItems', 2, null]], $this->validator->validate($input, $schema));
 
 		$schema = (object)[
 			'type'=> 'array',
 			'minItems'=> 2,
 		];
-		$input = [1,2];
 
+		$input = [1,2];
 		$this->assertSame([], $this->validator->validate($input, $schema));
 	}
 
-	public function testMax()
+	public function testMaxItems()
 	{
 		$schema = (object)[
 			'type'=> 'array',
@@ -43,15 +54,18 @@ class ArrayTest extends PHPUnit_Framework_TestCase
 		$this->assertSame([], $this->validator->validate($input, $schema));
 	}
 
-	public function testUnique()
+	public function testUniqueItems()
 	{
 		$schema = (object)[
 			'type'=> 'array',
 			'uniqueItems' => true,
 		];
-		$input = [1,2,2];
 
+		$input = [1,2,2];
 		$this->assertSame([['uniqueItems',true,null]], $this->validator->validate($input, $schema));
+
+		$input = [1,2,3];
+		$this->assertSame([], $this->validator->validate($input, $schema));
 
 		$schema = (object)[
 			'type'=> 'array',
@@ -60,32 +74,68 @@ class ArrayTest extends PHPUnit_Framework_TestCase
 		$input = [1,2,2];
 
 		$this->assertSame([], $this->validator->validate($input, $schema));
-
-		$schema = (object)[
-			'type'=> 'array',
-			'uniqueItems' => true,
-			'minItems' => 2,
-			'maxItems' => 3,
-		];
-		$input = [1,2,3];
-
-		$this->assertSame([], $this->validator->validate($input, $schema));
 	}
 
-	public function testEnum()
+	public function testItems()
 	{
 		$schema = (object)[
 			'type' => 'array',
-			'enum' => [[1, 2], [2, 3]],
+			'items' => [new stdClass, new stdClass],
 		];
-		$input = [1,3];
-		$this->assertSame([['enum', [[1,2], [2,3]], null]], $this->validator->validate($input, $schema));
 
-		$input = [2,3];
+		$input = [1, 3];
 		$this->assertSame([], $this->validator->validate($input, $schema));
+
+		$input = [1, 3, 4];
+		$this->assertSame([], $this->validator->validate($input, $schema));
+
+		$schema = (object)[
+			'type' => 'array',
+			'items' => [new stdClass, new stdClass],
+			'additionalItems' => false,
+		];
+
+		$input = [1, 3];
+		$this->assertSame([], $this->validator->validate($input, $schema));
+
+		$input = [1, 3, 4];
+		$this->assertEquals([['items', [new stdClass, new stdClass], null]], $this->validator->validate($input, $schema));
 	}
 
-	public function setup(){
+	public function testSchema()
+	{
+		$schema = json_decode(file_get_contents(dirname(__FILE__).DIRECTORY_SEPARATOR.'post.json'));
+		$schema = $schema->properties->comments;
+
+		$post = json_decode(json_encode([['title'=>'untitled']]));
+		$result = $this->validator->validate($post, $schema, true);
+		$this->assertSame([['required', ['title', 'content'], 0]], $result);
+
+		$post = json_decode(json_encode([
+			[
+				'title'=>'title',
+				'content'=>'content',
+			]
+		]));
+		$result = $this->validator->validate($post, $schema);
+		$this->assertSame([], $result);
+
+		$post = json_decode(json_encode([
+			[
+				'title'=>'title',
+				'content'=>null,
+			],
+			[
+				'title'=>'title',
+				'content'=>'',
+			]
+		]));
+		$result = $this->validator->validate($post, $schema);
+		$this->assertSame([], $result);
+	}
+
+	public function setup()
+	{
 		if(!isset($this->validator))
 		{
 			$this->validator = new Validator;
