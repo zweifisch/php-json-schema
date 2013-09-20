@@ -104,8 +104,21 @@ class ArrayTest extends PHPUnit_Framework_TestCase
 
 	public function testSchema()
 	{
-		$schema = json_decode(file_get_contents(dirname(__FILE__).DIRECTORY_SEPARATOR.'post.json'));
-		$schema = $schema->properties->comments;
+		$schema = (object)[
+			'type' => 'array',
+			'items' => (object)[
+				'type' => 'object',
+				'properties' => (object)[
+					'title' => (object)[
+						'type' => 'string'
+					],
+					'content' => (object)[
+						'type' => 'string'
+					],
+				],
+				'required' => ['title', 'content'],
+			],
+		];
 
 		$post = json_decode(json_encode([['title'=>'untitled']]));
 		$result = $this->validator->validate($post, $schema, true);
@@ -123,7 +136,7 @@ class ArrayTest extends PHPUnit_Framework_TestCase
 		$post = json_decode(json_encode([
 			[
 				'title'=>'title',
-				'content'=>null,
+				'content'=>'',
 			],
 			[
 				'title'=>'title',

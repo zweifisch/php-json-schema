@@ -50,10 +50,26 @@ class Validator
 			],
 			'object' => [
 				'type' => function($input){ return is_object($input); },
-				'maxProperties' => function($input, $max){ return count($input) <= $max; },
-				'minProperties' => function($input, $min){ return count($input) >= $min; },
+				'maxProperties' => function($input, $max){ return count(get_object_vars($input)) <= $max; },
+				'minProperties' => function($input, $min){ return count(get_object_vars($input)) >= $min; },
 				'required' => function($input, $required){
-					return !array_diff($required, array_keys((array)($input)));
+					return !array_diff($required, array_keys(get_object_vars($input)));
+				},
+				'additionalProperties' => function($input, $additionalProperties, $schema){
+					if($additionalProperties) return true;
+					$properties = array_keys(get_object_vars($input));
+					if(isset($schema->properties)){
+						$properties = array_diff($properties, array_keys(get_object_vars($schema->properties)));
+					}
+					if(isset($schema->patternProperties)){
+						$properties = array_filter($properties, function($property) use ($schema){
+							foreach($schema->patternProperties as $pattern=> $_){
+								if(preg_match("/$pattern/", $property)) return false;
+							}
+							return true;
+						});
+					}
+					return 0 == count($properties);
 				},
 			],
 			'null' => [
@@ -130,18 +146,24 @@ class Validator
 	private function validateObject($input, $schema)
 	{
 		$errors = [];
-		if(isset($schema->properties))
+		foreach($input as $key => $value)
 		{
-			foreach($schema->properties as $key=>$subSchema)
+			$subErrors = [];
+			if(isset($schema->properties->$key))
 			{
-				if(isset($input->$key) && $subErrors = $this->_validate($input->$key, $subSchema))
+				$subErrors = $this->_validate($value, $schema->properties->$key);
+			}
+			elseif(isset($schema->patternProperties))
+			{
+				foreach($schema->patternProperties as $pattern => $subSchema)
 				{
-					foreach($subErrors as $error)
-					{
-						list($constrain, $value, $k) = $error;
-						$errors[] = [$constrain, $value, $k ? "$key.$k" : $key];
-					}
+					if($subErrors = $this->_validate($value, $subSchema)) break;
 				}
+			}
+			foreach($subErrors as $error)
+			{
+				list($constrain, $value, $k) = $error;
+				$errors[] = [$constrain, $value, $k ? "$key.$k" : $key];
 			}
 		}
 		return $errors;
@@ -166,22 +188,16 @@ class Validator
 					}
 				}
 			}
-			elseif(is_array($schema->items))
+			elseif(is_array($schema->items) && isset($schema->additionalItems) && false === $schema->additionalItems)
 			{
-				if(isset($schema->additionalItems))
+				foreach($input as $idx => $element)
 				{
-					if(false === $schema->additionalItems)
+					if($subErrors = $this->_validate($element, $schema->items[$idx]))
 					{
-						foreach($input as $idx => $element)
+						foreach($subErrors as $error)
 						{
-							if($subErrors = $this->_validate($element, $schema->items[$idx]))
-							{
-								foreach($subErrors as $error)
-								{
-									list($constrain, $value, $k) = $error;
-									$errors[] = [$constrain, $value, $k ? "$idx.$k" : $idx];
-								}
-							}
+							list($constrain, $value, $k) = $error;
+							$errors[] = [$constrain, $value, $k ? "$idx.$k" : $idx];
 						}
 					}
 				}

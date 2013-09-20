@@ -23,10 +23,10 @@
 			"items": {
 				"type": "object",
 				"properties": {
-					"titl": {
+					"title": {
 						"type": "string"
 					},
-					"ontent": {
+					"content": {
 						"type": "string"
 					}
 				},
