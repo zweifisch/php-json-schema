@@ -12,4 +12,10 @@ class SchemaTest extends PHPUnit_Framework_TestCase
 
 		$this->assertEquals('http://foo.com/zoo#', $schema->joinpath('http://foo.com/#', 'zoo'));
 	}
+
+	public function testDereference()
+	{
+		$schema = new Schema(file_get_contents(dirname(__FILE__).DIRECTORY_SEPARATOR.'schema.json'));
+		$this->assertSame($schema->schema->definitions->schemaArray, $schema->dereference('#/definitions/schemaArray'));
+	}
 }

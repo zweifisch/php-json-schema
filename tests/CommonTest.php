@@ -37,6 +37,22 @@ class CommenTest extends PHPUnit_Framework_TestCase
 
 		$input = false;
 		$this->assertSame([['type', 'null', null]], $this->validator->validate($input, $schema));
+
+		$input = null;
+		$this->assertSame([], $this->validator->validate($input, $schema));
+
+		$schema = (object)[
+			'type' => 'boolean',
+		];
+
+		$input = null;
+		$this->assertSame([['type', 'boolean', null]], $this->validator->validate($input, $schema));
+
+		$input = true;
+		$this->assertSame([], $this->validator->validate($input, $schema));
+
+		$input = false;
+		$this->assertSame([], $this->validator->validate($input, $schema));
 	}
 
 	public function testAllOf()
@@ -89,6 +105,32 @@ class CommenTest extends PHPUnit_Framework_TestCase
 
 		$input = '???';
 		$this->assertSame([], $this->validator->validate($input, $schema));
+	}
+
+	public function testOneOf()
+	{
+		$schema = (object)[
+			'type' => 'string',
+			'oneOf' => [
+				(object)[
+					'type'=> 'string',
+					'maxLength'=> 2,
+				],
+				(object)[
+					'type'=> 'string',
+					'maxLength'=> 3,
+				],
+			],
+		];
+
+		$input = '123';
+		$this->assertSame([], $this->validator->validate($input, $schema));
+
+		$input = '1';
+		$this->assertEquals([['oneOf', $schema->oneOf, null]], $this->validator->validate($input, $schema));
+
+		$input = '1234';
+		$this->assertEquals([['oneOf', $schema->oneOf, null]], $this->validator->validate($input, $schema));
 	}
 
 	public function testNo()

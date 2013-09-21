@@ -8,13 +8,15 @@ class Validator
 {
 	private $validators;
 	private $commonValidators;
-	private $schemaOfSchema;
+	private $schema;
+	private static $validator;
 
-	private $definations;
-
-	public function __construct()
+	public function __construct($schema=null)
 	{
-		$this->schemaOfSchema = json_decode(file_get_contents(dirname(__FILE__).DIRECTORY_SEPARATOR.'schema.json'));
+		if($schema)
+		{
+			$this->schema = $schema;
+		}
 
 		$this->validators = [
 			'string'=> [
@@ -83,34 +85,39 @@ class Validator
 		$this->commonValidators = [
 			'enum' => function($input, $values){ return in_array($input, $values, true); },
 			'allOf' => function($input, $schemas){
-				foreach($schemas as $schema) if($this->validate($input, $schema)) return false;
+				foreach($schemas as $schema) if($this->_validate($input, $schema)) return false;
 				return true;
 			},
 			'anyOf' => function($input, $schemas){
-				foreach($schemas as $schema) if(!$this->validate($input, $schema)) return true;
+				foreach($schemas as $schema) if(!$this->_validate($input, $schema)) return true;
 			},
 			'oneOf' => function($input, $schemas){
 				return 1 == count(array_filter(array_map(function($schema) use ($input){
-					return $this->validate($input, $schema);
+					return $this->_validate($input, $schema);
 				}, $schemas), function($errors){
-					return empty($error);
+					return 0 == count($errors);
 				}));
 			},
 			'not' => function($input, $schema){
-				return count($this->validate($input, $schema)) > 0;
+				return count($this->_validate($input, $schema)) > 0;
 			},
 		];
 	}
 
-	public function validate($input, $schema, $validateSchema=false)
+	public function validate($input, $schema=null, $validateSchema=false)
 	{
-		if(is_string($schema)) $schema = json_decode($schema);
-		$schema = new Schema($schema);
-		$schema->dereference();
-		$schema = $schema->schema;
+		if($schema)
+		{
+			$this->schema = new Schema($schema);
+		}
+		$schema = $this->schema->schema;
 		if($validateSchema)
 		{
-			if($errors = $this->validate($schema, $this->schemaOfSchema))
+			if(!isset(self::$validator))
+			{
+				self::$validator = new Validator(new Schema(json_decode(file_get_contents(dirname(__FILE__).DIRECTORY_SEPARATOR.'schema.json'))));
+			}
+			if($errors = self::$validator->validate($schema))
 			{
 				throw new Exception('schema invalide');
 			}
@@ -120,22 +127,26 @@ class Validator
 
 	private function _validate($input, $schema)
 	{
+		if(isset($schema->{'$ref'})) $schema = $this->schema->dereference($schema->{'$ref'});
 		$errors = [];
 
-		if(empty($schema->type)) return [];
+		if(is_null($schema)) var_dump($input);
 
-		if($error = $this->validateNode($schema->type, $schema, $input))
+		$type = isset($schema->type) ? $schema->type : null;
+
+		if($error = $this->validateNode($type, $schema, $input))
 		{
 			list($constrain, $value) = $error;
 			$errors[] = [$constrain, $value, null];
 		}
-		if ($errors) return $errors;
 
-		if('object' === $schema->type)
+		if($errors) return $errors;
+
+		if('object' === $type)
 		{
 			$errors += $this->validateObject($input, $schema);
 		}
-		elseif('array' === $schema->type)
+		elseif('array' === $type)
 		{
 			$errors += $this->validateArray($input, $schema);
 		}
@@ -222,5 +233,4 @@ class Validator
 			}
 		}
 	}
-
 }
