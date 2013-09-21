@@ -28,6 +28,7 @@ catch(Exception $e)
 {
 	// $schema is invalid
 }
+```
 
 ## TBD
 
