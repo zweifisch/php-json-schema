@@ -1,5 +1,5 @@
+a partially implemented json schema validator [![Build Status](https://travis-ci.org/zweifisch/php-json-schema.png?branch=master)](https://travis-ci.org/zweifisch/php-json-schema)
 
-a partially implemented json schema validator
 
 ```php
 $validator = new \jsonschema\Validator;
